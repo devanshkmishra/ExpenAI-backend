@@ -6,7 +6,7 @@ import google.generativeai as genai
 import json
 from pydantic import BaseModel, ValidationError
 from fastapi.responses import JSONResponse
-import assemblyai as aai
+#import assemblyai as aai
 
 # Load environment variables
 load_dotenv()
