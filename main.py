@@ -2,18 +2,16 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from dotenv import load_dotenv
 import os
 from PIL import Image
-import io
 import google.generativeai as genai
 import json
 from pydantic import BaseModel, ValidationError
 from fastapi.responses import JSONResponse
-import shutil
 import assemblyai as aai
 
 # Load environment variables
 load_dotenv()
 
-aai.settings.api_key = os.getenv("AAI_API_KEY")
+#aai.settings.api_key = os.getenv("AAI_API_KEY")
 
 # Initialize the FastAPI app
 app = FastAPI()
