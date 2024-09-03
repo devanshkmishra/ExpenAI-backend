@@ -1,7 +1,3 @@
-Here is a `README.md` file for your ExpenAI project on GitHub. This file outlines the project details, technologies used, features, installation instructions, and sections for screenshots.
-
----
-
 # ExpenAI 💸
 
 **ExpenAI** is an intelligent expense tracker application that leverages advanced AI capabilities to process expenses from images, voice, and text inputs. With ExpenAI, users can easily manage their expenses by scanning bills, using voice commands, or typing descriptions of their purchases. The app uses Google Generative AI (Gemini) to categorize and extract amounts from various input formats, providing a seamless and intuitive user experience.
