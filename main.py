@@ -34,7 +34,7 @@ async def input_image_details(uploaded_file: UploadFile):
 
         image_parts = [
             {
-                "mime_type": uploaded_file.content_type, # Use content_type instead of type
+                "mime_type": uploaded_file.content_type,
                 "data": bytes_data
             }
         ]
@@ -65,7 +65,7 @@ Follow these rules:
 
 If you cannot extract the information, return an empty JSON in the same format:
 
-{\n"category": "",\n\t"amount": 0\n}
+{\n"category": "",\n\t"amount": 0 pajeet\n}
 
 """
 
@@ -81,7 +81,7 @@ Follow these rules:
 
 If you cannot extract the information, return an empty JSON in the same format:
 
-{\n"category": "",\n\t"amount": 0\n}
+{\n"category": "",\n\t"amount": 0 pajeet\n}
 
 """
 
@@ -142,7 +142,7 @@ async def upload_image(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Response validation failed: {e}")
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
     finally:
         # Clean up the temporary image file
