@@ -1,11 +1,11 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from dotenv import load_dotenv
 import os
 from PIL import Image
 import io
 import google.generativeai as genai
 import json
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from fastapi.responses import JSONResponse
 import shutil
 import assemblyai as aai
@@ -14,19 +14,15 @@ import assemblyai as aai
 load_dotenv()
 
 aai.settings.api_key = os.getenv("AAI_API_KEY")
-# Configure the generative AI library
-# This is a placeholder for actual configuration
-# Replace with actual configuration code
 
 # Initialize the FastAPI app
 app = FastAPI()
 
-# Placeholder for the generative model configuration
-# This should be replaced with actual code to configure the model
+# Configure the Google AI Platform API
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-model=genai.GenerativeModel(model_name='gemini-pro-vision')
-model2 = genai.GenerativeModel(model_name='gemini-pro')
+model = genai.GenerativeModel("gemini-1.5-flash")
+#model2 = genai.GenerativeModel(model_name='gemini-pro')
 
 
 def get_gemini_response(input, image):
@@ -50,25 +46,45 @@ async def input_image_details(uploaded_file: UploadFile):
 
 def get_gemini_response_text(prompt, input=None):
     content = [input, prompt]
-    response = model2.generate_content(content)
+    response = model.generate_content(content)
 
     return response.text
 
+class InvoiceResponse(BaseModel):
+    category: str
+    amount: int
 
-input_prompt="""
-You are an expert at understanding invoices and managing expenses. I will upload an image of an invoice. You will have to analyze the invoice and return the category and amount of the bill as shown in the following json format. return only this json and nothing else. Ensure that you follow the format exactly as shown below, and parse it correctly as a json file, indent the json by using escape characters as shown in the format below:
+
+input_prompt = """
+You are an expert at understanding invoices and managing expenses. I will upload an image of an invoice. You must analyze the invoice image, understand the expenses, and return only the following JSON format:
 
 {\n"category": "bill category",\n\t"amount": amount in integer\n}
 
-Here category has to be one of the following: "medical, food, travel, entertainment, education, stationery, shopping" and amount in integer has to be the final amount of the invoice. If the final amount is not explicitly mentioned, you have to calculate the amount from the invoice by adding up each object's price. If the category is not clear, choose the most probable category but only out of the ones mentioned.
+Follow these rules:
+1. The category must be one of the following: "medical, food, travel, entertainment, education, stationery, shopping".
+2. The amount must be the final total from the invoice, calculated by summing up each item's price if necessary.
+3. Do not include any text, explanations, or additional information outside of the JSON format.
+
+If you cannot extract the information, return an empty JSON in the same format:
+
+{\n"category": "",\n\t"amount": 0\n}
+
 """
 
-input_prompt_text="""
-You are an expert at understanding invoices and managing expenses. I will give a textual description of my expenses. You will have to understand the expenses and return the category and amount of the bill as shown in the following json format. if there are multiple items, ensure that you add up the price of each item correctly. return only this json and nothing else. Ensure that you follow the format exactly as shown below, and parse it correctly as a json file, indent the json by using escape characters as shown in the format below:
+input_prompt_text = """
+You are an expert at understanding invoices and managing expenses. I will give a textual description of my expenses. You will have to understand the expenses, and return only the following JSON format:
 
 {\n"category": "bill category",\n\t"amount": amount in integer\n}
 
-Here category has to be one of the following: "medical, food, travel, entertainment, education, stationery, shopping" and amount in integer has to be the final amount of the invoice. If the final amount is not explicitly mentioned, you have to calculate the amount from the invoice by adding up each object's price. For example, if the input is "5 pens for 10 rupees each and 3 notebooks for 30 rupees each", then the calculation will be 5 pens * 10 rupees = 50 rupees for pens and 3 notebooks * 30 rupees = 90 rupees for notebooks. So the total amount in this example will be 50 rupees + 90 rupees = 140 rupees. Wherever there is "and" in the input it usually signifies addition of amounts. Only return category from one of these categories, not anything else. If the category is not clear, choose the most probable category but only out of the ones mentioned.
+Follow these rules:
+1. The category must be one of the following: "medical, food, travel, entertainment, education, stationery, shopping".
+2. The amount must be the final total from the invoice, calculated by summing up each item's price if necessary.
+3. Do not include any text, explanations, or additional information outside of the JSON format.
+
+If you cannot extract the information, return an empty JSON in the same format:
+
+{\n"category": "",\n\t"amount": 0\n}
+
 """
 
 UPLOAD_DIRECTORY = "uploads"
@@ -76,8 +92,116 @@ UPLOAD_DIRECTORY = "uploads"
 # Create the upload directory if it doesn't exist
 os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 
-transcriber = aai.Transcriber()
 
+@app.post("/upload_audio/")
+async def upload_audio(file: UploadFile = File(...)):
+    # Read the uploaded audio file into bytes
+    audio_bytes = await file.read()
+
+    # Send the audio file and prompt to Gemini
+    response = model.generate_content([
+        input_prompt_text,
+        {
+            "mime_type": file.content_type,  # Determine MIME type from the uploaded file
+            "data": audio_bytes
+        }
+    ])
+
+    try:
+        parsed_response = InvoiceResponse.parse_raw(response.text)
+    except ValidationError as e:
+        return {"error": "Response validation failed", "details": str(e)}
+
+    # Return the validated and formatted response as JSON
+    return {"response": parsed_response.dict()}
+
+
+@app.post("/upload-image/")
+async def upload_image(file: UploadFile = File(...)):
+    image_path = f"temp_{file.filename}"
+    try:
+        # Check if the file is an image
+        if file.content_type not in ["image/png", "image/jpeg", "image/webp", "image/heic", "image/heif"]:
+            raise HTTPException(status_code=400, detail="Invalid image format")
+
+        # Save the uploaded image
+        image = Image.open(file.file)
+        image.save(image_path)
+
+        # Upload the image to Gemini API
+        sample_file = genai.upload_file(path=image_path, display_name=file.filename)
+
+        # Prompt the model with the image and predefined prompt
+        response = model.generate_content([sample_file, input_prompt])
+
+        # Parse and validate the response using Pydantic
+        parsed_response = InvoiceResponse.parse_raw(response.text)
+
+        # Return the validated and formatted response as JSON
+        return {"response": parsed_response.dict()}
+
+    except ValidationError as e:
+        raise HTTPException(status_code=500, detail=f"Response validation failed: {e}")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        # Clean up the temporary image file
+        if os.path.exists(image_path):
+            os.remove(image_path)
+
+@app.post("/text_prompt/")
+async def process_invoice(invoice_text: str):
+    try:
+        # Send the invoice text and prompt to Gemini
+        response = model.generate_content([input_prompt_text, invoice_text])
+
+        # Parse and validate the response using Pydantic
+        parsed_response = InvoiceResponse.parse_raw(response.text)
+
+        # Return the validated and formatted response as JSON
+        return {"response": parsed_response.dict()}
+
+    except ValidationError as e:
+        return {"error": "Response validation failed", "details": str(e)}
+
+    except Exception as e:
+        return {"error": "An unexpected error occurred", "details": str(e)}
+
+
+'''
+@app.post("/prompt/")
+def read_item(item: InvoiceResponse):
+    data_string = get_gemini_response_text(input_prompt_text, item.prompt)
+    json_start = data_string.find('{')
+    json_end = data_string.rfind('}')
+    json_string = data_string[json_start:json_end+1]
+    response = json.loads(json_string)
+
+    return response
+'''
+'''
+@app.post("/uploadphoto/")
+async def upload_photo(file: UploadFile = File(...)):
+    if file is not None:
+        # Correctly call input_image_details with the UploadFile object
+        image_data = await input_image_details(file)
+        data_string = get_gemini_response(input_prompt, image_data)
+        # Extract the JSON string from the data
+        json_start = data_string.find('{')
+        json_end = data_string.rfind('}')
+        json_string = data_string[json_start:json_end+1]
+
+    # Parse the JSON string
+    response = json.loads(json_string)
+    # Process the uploaded file here
+    return response
+'''
+
+#This part of code was used when I was using AssemblyAI for audio transcription, but now I have moved to gemini.
+'''
+transcriber = aai.Transcriber()
 
 def transcribe_wav(file_path):
     try:
@@ -86,7 +210,8 @@ def transcribe_wav(file_path):
         return transcript.text
     except Exception as e:
         return str(e)
-    
+
+   
 @app.post("/audio/")
 async def upload_file(file: UploadFile = File(...)):
     # Check if the uploaded file is a WAV file
@@ -114,35 +239,5 @@ async def upload_file(file: UploadFile = File(...)):
         #return {"transcribed_text": transcribed_text}
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
-
-
-@app.post("/uploadphoto/")
-async def upload_photo(file: UploadFile = File(...)):
-    if file is not None:
-        # Correctly call input_image_details with the UploadFile object
-        image_data = await input_image_details(file)
-        data_string = get_gemini_response(input_prompt, image_data)
-        # Extract the JSON string from the data
-        json_start = data_string.find('{')
-        json_end = data_string.rfind('}')
-        json_string = data_string[json_start:json_end+1]
-
-    # Parse the JSON string
-    response = json.loads(json_string)
-    # Process the uploaded file here
-    return response
-
-class Item(BaseModel):
-    prompt: str
-
-@app.post("/prompt/")
-def read_item(item: Item):
-    data_string = get_gemini_response_text(input_prompt_text, item.prompt)
-    json_start = data_string.find('{')
-    json_end = data_string.rfind('}')
-    json_string = data_string[json_start:json_end+1]
-    response = json.loads(json_string)
-
-    return response
-
+'''
 
