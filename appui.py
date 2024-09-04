@@ -25,7 +25,7 @@ wallet_balance = st.number_input("Enter your wallet balance:", min_value=0, valu
 st.session_state.wallet_balance = wallet_balance
 
 # Backend API endpoints
-BACKEND_URL = os.getenv("BACKEND_URL")  # Adjust this URL based on where your FastAPI app is running
+BACKEND_URL = "https://expenai-backend.onrender.com"  # Adjust this URL based on where your FastAPI app is running
 UPLOAD_IMAGE_ENDPOINT = f"{BACKEND_URL}/upload-image/"
 UPLOAD_AUDIO_ENDPOINT = f"{BACKEND_URL}/upload_audio/"
 TEXT_PROMPT_ENDPOINT = f"{BACKEND_URL}/text_prompt/"
