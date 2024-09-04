@@ -7,3 +7,6 @@ python-dotenv
 assemblyai
 pillow
 streamlit
+plotly
+pydantic
+pandas

@@ -1,9 +1,14 @@
 import streamlit as st
 import requests
 import json
+import os
 from io import BytesIO
 import pandas as pd
 import plotly.express as px
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Streamlit app title and icon
 st.set_page_config(page_title="ExpenAI", page_icon="💸")
@@ -20,7 +25,7 @@ wallet_balance = st.number_input("Enter your wallet balance:", min_value=0, valu
 st.session_state.wallet_balance = wallet_balance
 
 # Backend API endpoints
-BACKEND_URL = "http://0.0.0.0:8000"  # Adjust this URL based on where your FastAPI app is running
+BACKEND_URL = os.getenv("BACKEND_URL")  # Adjust this URL based on where your FastAPI app is running
 UPLOAD_IMAGE_ENDPOINT = f"{BACKEND_URL}/upload-image/"
 UPLOAD_AUDIO_ENDPOINT = f"{BACKEND_URL}/upload_audio/"
 TEXT_PROMPT_ENDPOINT = f"{BACKEND_URL}/text_prompt/"
