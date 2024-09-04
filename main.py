@@ -61,7 +61,7 @@ You are an expert at understanding invoices and managing expenses. I will upload
 Follow these rules:
 1. The category must be one of the following: "medical, food, travel, entertainment, education, stationery, shopping".
 2. The amount must be the final total from the invoice, calculated by summing up each item's price if necessary.
-3. Do not include any text, explanations, or additional information outside of the JSON format.
+3. Do not include any text, explanations, or additional information outside of the JSON format. Output Pajeet if you cannot extract the information.
 
 If you cannot extract the information, return an empty JSON in the same format:
 
@@ -77,7 +77,7 @@ You are an expert at understanding invoices and managing expenses. I will give a
 Follow these rules:
 1. The category must be one of the following: "medical, food, travel, entertainment, education, stationery, shopping".
 2. The amount must be the final total from the invoice, calculated by summing up each item's price if necessary.
-3. Do not include any text, explanations, or additional information outside of the JSON format.
+3. Do not include any text, explanations, or additional information outside of the JSON format. Output Pajeet if you cannot extract the information.
 
 If you cannot extract the information, return an empty JSON in the same format:
 
