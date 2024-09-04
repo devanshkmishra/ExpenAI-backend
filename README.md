@@ -1,5 +1,8 @@
 # ExpenAI 💸
 
+Try it out at https://expenai-backend-1.onrender.com/
+Please note that it make take up to 2 minutes to work as the hosting service might spin down the deployment due to inactivity.
+
 **ExpenAI** is an intelligent expense tracker application that leverages advanced AI capabilities to process expenses from images, voice, and text inputs. With ExpenAI, users can easily manage their expenses by scanning bills, using voice commands, or typing descriptions of their purchases. The app uses Google Generative AI (Gemini) to categorize and extract amounts from various input formats, providing a seamless and intuitive user experience.
 
 
